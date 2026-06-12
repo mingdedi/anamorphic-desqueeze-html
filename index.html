@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>1.33x 变形宽银幕反挤压</title>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: #333;
+  --text: #e0e0e0;
+  --text2: #999;
+  --accent: #4a90d9;
+  --accent-hover: #5aa0e9;
+  --danger: #d94a4a;
+  --success: #4ad9a0;
+  --warning: #d9a04a;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+.header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), #7ab8f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .sub {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-top: 4px;
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+/* Mode selector */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 12px 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mode-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74,144,217,0.1);
+}
+.mode-tab:active {
+  transform: scale(0.97);
+}
+
+/* Direction selector */
+.dir-row {
+  display: flex;
+  gap: 8px;
+}
+.dir-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dir-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74,144,217,0.1);
+}
+.dir-btn:active {
+  transform: scale(0.97);
+}
+.dir-icon {
+  display: block;
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+/* File input area */
+.file-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--surface2);
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.file-drop-zone:active, .file-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(74,144,217,0.08);
+}
+.file-drop-zone .icon {
+  font-size: 2.4rem;
+}
+.file-drop-zone .label {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.file-drop-zone .hint {
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+.file-drop-zone input[type=file] {
+  display: none;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+.btn-primary:disabled:active {
+  transform: none;
+}
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--text);
+}
+.btn-small {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  width: auto;
+}
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  width: auto;
+}
+
+/* Progress */
+.progress-section { display: none; }
+.progress-section.visible { display: block; }
+
+.progress-bar-outer {
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #7ab8f5);
+  border-radius: 4px;
+  transition: width 0.3s;
+  width: 0%;
+}
+.progress-text {
+  font-size: 0.85rem;
+  color: var(--text2);
+  text-align: center;
+}
+
+/* Results */
+.results-section { display: none; }
+.results-section.visible { display: block; }
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+.result-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #111;
+}
+.result-info {
+  flex: 1;
+  min-width: 0;
+}
+.result-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-size {
+  font-size: 0.7rem;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.result-status {
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+.result-status.skipped { color: var(--warning); }
+.result-status.processed { color: var(--success); }
+.result-status.error { color: var(--danger); }
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Batch action bar */
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.batch-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 0.85rem;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Selected files info */
+.selected-info {
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-top: 8px;
+  text-align: center;
+  display: none;
+}
+.selected-info.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>🎬 1.33x 反挤压</h1>
+    <div class="sub">变形宽银幕镜头照片处理工具</div>
+  </div>
+
+  <!-- Mode Selection -->
+  <div class="card">
+    <div class="card-title">📥 输入模式</div>
+    <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="single">📷 单张照片</button>
+      <button class="mode-tab" data-mode="batch">📁 整个文件夹</button>
+    </div>
+  </div>
+
+  <!-- Direction Selection -->
+  <div class="card">
+    <div class="card-title">↔️ 反挤压方向</div>
+    <div class="dir-row" id="dirRow">
+      <button class="dir-btn active" data-dir="horizontal">
+        <span class="dir-icon">↔️</span>横向 1.33x
+      </button>
+      <button class="dir-btn" data-dir="vertical">
+        <span class="dir-icon">↕️</span>竖向 1.33x
+      </button>
+    </div>
+  </div>
+
+  <!-- File Input -->
+  <div class="card">
+    <div class="file-drop-zone" id="dropZone">
+      <span class="icon">📂</span>
+      <span class="label" id="dropLabel">点击选择文件</span>
+      <span class="hint" id="dropHint">支持 JPG / PNG / WebP / HEIC</span>
+      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="folderInput" webkitdirectory accept="image/*" style="display:none">
+    </div>
+    <div class="selected-info" id="selectedInfo"></div>
+  </div>
+
+  <!-- Action Button -->
+  <button class="btn btn-primary" id="processBtn" disabled>开始处理</button>
+
+  <!-- Progress -->
+  <div class="card progress-section" id="progressSection">
+    <div class="card-title">⏳ 处理进度</div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">准备中...</div>
+  </div>
+
+  <!-- Results -->
+  <div class="card results-section" id="resultsSection">
+    <div class="card-title">✅ 处理结果</div>
+    <div class="batch-actions" style="margin-bottom:12px">
+      <button class="btn btn-outline btn-small" id="downloadAllBtn">📥 下载全部</button>
+      <button class="btn btn-danger btn-small" id="clearBtn">🗑️ 清除列表</button>
+    </div>
+    <div id="resultsList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  // ── State ──
+  let mode = 'single';
+  let direction = 'horizontal';
+  let selectedFiles = [];
+  let results = [];
+  const MARKER = '_desqueezed';
+
+  // ── DOM refs ──
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  const modeTabs = $('#modeTabs');
+  const dirRow = $('#dirRow');
+  const dropZone = $('#dropZone');
+  const dropLabel = $('#dropLabel');
+  const dropHint = $('#dropHint');
+  const fileInput = $('#fileInput');
+  const folderInput = $('#folderInput');
+  const selectedInfo = $('#selectedInfo');
+  const processBtn = $('#processBtn');
+  const progressSection = $('#progressSection');
+  const progressBar = $('#progressBar');
+  const progressText = $('#progressText');
+  const resultsSection = $('#resultsSection');
+  const resultsList = $('#resultsList');
+  const downloadAllBtn = $('#downloadAllBtn');
+  const clearBtn = $('#clearBtn');
+  const toast = $('#toast');
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // ── Mode switching ──
+  modeTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.mode-tab');
+    if (!tab) return;
+    mode = tab.dataset.mode;
+    modeTabs.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    resetFileInput();
+  });
+
+  // ── Direction switching ──
+  dirRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dir-btn');
+    if (!btn) return;
+    direction = btn.dataset.dir;
+    dirRow.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  // ── File input handling ──
+  dropZone.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mode === 'single') {
+      fileInput.click();
+    } else {
+      folderInput.click();
+    }
+  });
+
+  // Prevent double-trigger on label click
+  dropZone.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (mode === 'single') {
+      fileInput.click();
+    } else {
+      folderInput.click();
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      selectedFiles = Array.from(fileInput.files);
+      updateFileInfo();
+    }
+  });
+
+  folderInput.addEventListener('change', () => {
+    if (folderInput.files.length > 0) {
+      selectedFiles = Array.from(folderInput.files).filter(f =>
+        /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)
+      );
+      if (selectedFiles.length === 0) {
+        showToast('未找到图片文件');
+        folderInput.value = '';
+        return;
+      }
+      updateFileInfo();
+    }
+  });
+
+  function resetFileInput() {
+    fileInput.value = '';
+    folderInput.value = '';
+    selectedFiles = [];
+    updateFileInfo();
+  }
+
+  function updateFileInfo() {
+    if (selectedFiles.length === 0) {
+      selectedInfo.classList.remove('visible');
+      processBtn.disabled = true;
+      dropLabel.textContent = '点击选择文件';
+      dropHint.textContent = '支持 JPG / PNG / WebP / HEIC';
+    } else {
+      selectedInfo.classList.add('visible');
+      processBtn.disabled = false;
+      if (selectedFiles.length === 1) {
+        selectedInfo.textContent = `已选择: ${selectedFiles[0].name}`;
+        dropLabel.textContent = selectedFiles[0].name;
+        dropHint.textContent = formatSize(selectedFiles[0].size);
+      } else {
+        const totalSize = selectedFiles.reduce((s, f) => s + f.size, 0);
+        selectedInfo.textContent = `已选择 ${selectedFiles.length} 个文件 (${formatSize(totalSize)})`;
+        dropLabel.textContent = `${selectedFiles.length} 个文件`;
+        dropHint.textContent = `总大小 ${formatSize(totalSize)}`;
+      }
+    }
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  // ── Check if file is already processed ──
+  function isAlreadyProcessed(filename) {
+    const name = filename.replace(/\.[^.]+$/, '');
+    return name.toLowerCase().endsWith(MARKER.toLowerCase());
+  }
+
+  // ── Generate output filename ──
+  function getOutputFilename(originalName) {
+    const dotIndex = originalName.lastIndexOf('.');
+    if (dotIndex === -1) return originalName + MARKER;
+    const name = originalName.substring(0, dotIndex);
+    const ext = originalName.substring(dotIndex);
+    if (name.toLowerCase().endsWith(MARKER.toLowerCase())) return originalName;
+    return name + MARKER + ext;
+  }
+
+  // ── Process single image ──
+  function processImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+
+        let outW, outH;
+        if (direction === 'horizontal') {
+          outW = Math.round(img.width * 1.33);
+          outH = img.height;
+        } else {
+          outW = img.width;
+          outH = Math.round(img.height * 1.33);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, outW, outH);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('无法生成图片'));
+            return;
+          }
+          resolve({
+            blob,
+            width: outW,
+            height: outH,
+            originalName: file.name,
+            outputName: getOutputFilename(file.name),
+            thumbUrl: canvas.toDataURL('image/jpeg', 0.5)
+          });
+        }, 'image/jpeg', 0.92);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('图片加载失败'));
+      };
+
+      img.src = url;
+    });
+  }
+
+  // ── Main process ──
+  processBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
+
+    // Reset
+    results = [];
+    resultsList.innerHTML = '';
+    resultsSection.classList.remove('visible');
+    progressSection.classList.add('visible');
+    processBtn.disabled = true;
+
+    let processed = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    progressBar.style.width = '0%';
+    progressText.textContent = `0 / ${selectedFiles.length}`;
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+
+      progressText.textContent = `处理中: ${file.name} (${i + 1} / ${selectedFiles.length})`;
+
+      // Check skip
+      if (isAlreadyProcessed(file.name)) {
+        skipped++;
+        results.push({
+          name: file.name,
+          status: 'skipped',
+          msg: '已处理过，跳过'
+        });
+        updateProgress(i + 1, selectedFiles.length);
+        continue;
+      }
+
+      try {
+        const result = await processImage(file);
+        processed++;
+        results.push({
+          ...result,
+          status: 'processed',
+          msg: `${result.width}×${result.height}`
+        });
+      } catch (err) {
+        errors++;
+        results.push({
+          name: file.name,
+          status: 'error',
+          msg: err.message
+        });
+      }
+
+      updateProgress(i + 1, selectedFiles.length);
+    }
+
+    // Done
+    progressText.textContent = `完成！处理 ${processed}，跳过 ${skipped}，失败 ${errors}`;
+    processBtn.disabled = false;
+    renderResults();
+
+    if (processed === 0 && errors === 0) {
+      showToast('所有文件均已处理过，无需重复处理');
+    } else if (processed > 0) {
+      showToast(`成功处理 ${processed} 张照片`);
+    }
+  });
+
+  function updateProgress(current, total) {
+    const pct = Math.round((current / total) * 100);
+    progressBar.style.width = pct + '%';
+  }
+
+  // ── Render results ──
+  function renderResults() {
+    resultsList.innerHTML = '';
+    results.forEach((r, idx) => {
+      const div = document.createElement('div');
+      div.className = 'result-item';
+
+      let statusClass = '';
+      let statusIcon = '';
+      if (r.status === 'processed') { statusClass = 'processed'; statusIcon = '✅'; }
+      else if (r.status === 'skipped') { statusClass = 'skipped'; statusIcon = '⏭️'; }
+      else { statusClass = 'error'; statusIcon = '❌'; }
+
+      div.innerHTML = `
+        ${r.thumbUrl ? `<img class="result-thumb" src="${r.thumbUrl}" alt="">` : `<div class="result-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">${statusIcon}</div>`}
+        <div class="result-info">
+          <div class="result-name" title="${r.outputName || r.name}">${r.outputName || r.name}</div>
+          <div class="result-size">${r.msg}</div>
+          <div class="result-status ${statusClass}">${statusIcon} ${r.status === 'processed' ? '已处理' : r.status === 'skipped' ? '已跳过' : '失败'}</div>
+        </div>
+        <div class="result-actions">
+          ${r.status === 'processed' ? `<button class="btn btn-outline btn-small download-single" data-idx="${idx}">下载</button>` : ''}
+        </div>
+      `;
+      resultsList.appendChild(div);
+    });
+
+    resultsSection.classList.add('visible');
+
+    // Bind download buttons
+    resultsList.querySelectorAll('.download-single').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.idx);
+        downloadResult(results[idx]);
+      });
+    });
+  }
+
+  function downloadResult(r) {
+    if (!r.blob) return;
+    const url = URL.createObjectURL(r.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.outputName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ── Download all ──
+  downloadAllBtn.addEventListener('click', () => {
+    const processedResults = results.filter(r => r.status === 'processed');
+    if (processedResults.length === 0) {
+      showToast('没有可下载的文件');
+      return;
+    }
+    showToast(`开始下载 ${processedResults.length} 个文件...`);
+    processedResults.forEach((r, i) => {
+      setTimeout(() => downloadResult(r), i * 300);
+    });
+  });
+
+  // ── Clear ──
+  clearBtn.addEventListener('click', () => {
+    results = [];
+    resultsList.innerHTML = '';
+    resultsSection.classList.remove('visible');
+    progressSection.classList.remove('visible');
+    progressBar.style.width = '0%';
+    progressText.textContent = '准备中...';
+    showToast('已清除');
+  });
+
+  // ── Drag & Drop (for desktop) ──
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)
+    );
+    if (files.length === 0) {
+      showToast('未找到支持的图片文件');
+      return;
+    }
+    if (mode === 'single' && files.length > 1) {
+      showToast('单张模式下仅处理第一张');
+      selectedFiles = [files[0]];
+    } else {
+      selectedFiles = files;
+    }
+    updateFileInfo();
+  });
+
+  // ── Init ──
+  updateFileInfo();
+})();
+</script>
+
+</body>
+</html>
