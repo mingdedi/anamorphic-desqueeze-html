@@ -349,6 +349,59 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Selected files info */
+/* Quality selector */
+.quality-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.quality-row label {
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.quality-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+.quality-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.quality-slider::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+}
+.quality-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  cursor: pointer;
+}
+.quality-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .selected-info {
   font-size: 0.8rem;
   color: var(--accent);
@@ -387,6 +440,16 @@ body {
       <button class="dir-btn" data-dir="vertical">
         <span class="dir-icon">↕️</span>竖向 1.33x
       </button>
+    </div>
+  </div>
+
+  <!-- JPG Quality -->
+  <div class="card">
+    <div class="card-title">🖼️ 输出质量</div>
+    <div class="quality-row">
+      <label for="qualitySlider">JPG 质量</label>
+      <input type="range" class="quality-slider" id="qualitySlider" min="1" max="100" value="92" step="1">
+      <span class="quality-value" id="qualityDisplay">92%</span>
     </div>
   </div>
 
@@ -442,6 +505,8 @@ body {
 
   const modeTabs = $('#modeTabs');
   const dirRow = $('#dirRow');
+  const qualitySlider = $('#qualitySlider');
+  const qualityDisplay = $('#qualityDisplay');
   const dropZone = $('#dropZone');
   const dropLabel = $('#dropLabel');
   const dropHint = $('#dropHint');
@@ -484,6 +549,11 @@ body {
     direction = btn.dataset.dir;
     dirRow.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+  });
+
+  // ── Quality slider ──
+  qualitySlider.addEventListener('input', () => {
+    qualityDisplay.textContent = qualitySlider.value + '%';
   });
 
   // ── File input handling ──
@@ -617,7 +687,7 @@ body {
             outputName: getOutputFilename(file.name),
             thumbUrl: canvas.toDataURL('image/jpeg', 0.5)
           });
-        }, 'image/jpeg', 0.92);
+        }, 'image/jpeg', qualitySlider.value / 100);
       };
 
       img.onerror = () => {
