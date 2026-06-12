@@ -410,6 +410,36 @@ body {
   display: none;
 }
 .selected-info.visible { display: block; }
+
+/* Clear file button */
+.file-drop-wrapper {
+  position: relative;
+}
+.file-clear-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  font-size: 0.85rem;
+  line-height: 26px;
+  text-align: center;
+  cursor: pointer;
+  display: none;
+  z-index: 10;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.file-clear-btn.visible { display: block; }
+.file-clear-btn:active {
+  transform: scale(0.9);
+  background: #c04040;
+}
 </style>
 </head>
 <body>
@@ -455,12 +485,15 @@ body {
 
   <!-- File Input -->
   <div class="card">
-    <div class="file-drop-zone" id="dropZone">
-      <span class="icon">📂</span>
-      <span class="label" id="dropLabel">点击选择文件</span>
-      <span class="hint" id="dropHint">支持 JPG / PNG / WebP / HEIC</span>
-      <input type="file" id="fileInput" accept="image/*">
-      <input type="file" id="folderInput" webkitdirectory accept="image/*" style="display:none">
+    <div class="file-drop-wrapper">
+      <div class="file-drop-zone" id="dropZone">
+        <span class="icon">📂</span>
+        <span class="label" id="dropLabel">点击选择文件</span>
+        <span class="hint" id="dropHint">支持 JPG / PNG / WebP / HEIC</span>
+        <input type="file" id="fileInput" accept="image/*">
+        <input type="file" id="folderInput" webkitdirectory accept="image/*" style="display:none">
+      </div>
+      <button class="file-clear-btn" id="fileClearBtn" title="清除已选文件">✕</button>
     </div>
     <div class="selected-info" id="selectedInfo"></div>
   </div>
@@ -522,6 +555,7 @@ body {
   const downloadAllBtn = $('#downloadAllBtn');
   const clearBtn = $('#clearBtn');
   const toast = $('#toast');
+  const fileClearBtn = $('#fileClearBtn');
 
   // ── Toast ──
   let toastTimer;
@@ -559,6 +593,7 @@ body {
   // ── File input handling ──
   dropZone.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (selectedFiles.length > 0) return;
     if (mode === 'single') {
       fileInput.click();
     } else {
@@ -569,11 +604,18 @@ body {
   // Prevent double-trigger on label click
   dropZone.addEventListener('touchend', (e) => {
     e.preventDefault();
+    if (selectedFiles.length > 0) return;
     if (mode === 'single') {
       fileInput.click();
     } else {
       folderInput.click();
     }
+  });
+
+  // Clear selection button
+  fileClearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetFileInput();
   });
 
   fileInput.addEventListener('change', () => {
@@ -607,11 +649,13 @@ body {
   function updateFileInfo() {
     if (selectedFiles.length === 0) {
       selectedInfo.classList.remove('visible');
+      fileClearBtn.classList.remove('visible');
       processBtn.disabled = true;
       dropLabel.textContent = '点击选择文件';
       dropHint.textContent = '支持 JPG / PNG / WebP / HEIC';
     } else {
       selectedInfo.classList.add('visible');
+      fileClearBtn.classList.add('visible');
       processBtn.disabled = false;
       if (selectedFiles.length === 1) {
         selectedInfo.textContent = `已选择: ${selectedFiles[0].name}`;
