@@ -685,11 +685,10 @@ body {
   // ── Generate output filename ──
   function getOutputFilename(originalName) {
     const dotIndex = originalName.lastIndexOf('.');
-    if (dotIndex === -1) return originalName + MARKER;
+    if (dotIndex === -1) return originalName + MARKER + '.jpg';
     const name = originalName.substring(0, dotIndex);
-    const ext = originalName.substring(dotIndex);
     if (name.toLowerCase().endsWith(MARKER.toLowerCase())) return originalName;
-    return name + MARKER + ext;
+    return name + MARKER + '.jpg';
   }
 
   // ── Process single image ──
@@ -701,6 +700,7 @@ body {
       img.onload = () => {
         URL.revokeObjectURL(url);
 
+        const MAX_DIM = 16384;
         let outW, outH;
         if (direction === 'horizontal') {
           outW = Math.round(img.width * 1.33);
@@ -709,6 +709,10 @@ body {
           outW = img.width;
           outH = Math.round(img.height * 1.33);
         }
+        if (outW > MAX_DIM || outH > MAX_DIM) {
+          reject(new Error(`输出尺寸 ${outW}×${outH} 超出限制（最大 ${MAX_DIM}px）`));
+          return;
+        }
 
         const canvas = document.createElement('canvas');
         canvas.width = outW;
@@ -716,6 +720,8 @@ body {
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outW, outH);
         ctx.drawImage(img, 0, 0, outW, outH);
 
         canvas.toBlob((blob) => {
