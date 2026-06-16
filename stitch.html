@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>图片拼接</title>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: #333;
+  --text: #e0e0e0;
+  --text2: #999;
+  --accent: #4a90d9;
+  --accent-hover: #5aa0e9;
+  --danger: #d94a4a;
+  --success: #4ad9a0;
+  --warning: #d9a04a;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0 16px;
+}
+.header-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  text-decoration: none;
+  font-size: 1.1rem;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.header-back:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.header-back:active {
+  transform: scale(0.93);
+  background: rgba(74,144,217,0.1);
+}
+.header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), #7ab8f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .sub {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.header .sub a {
+  color: var(--text2);
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+/* File input area */
+.file-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--surface2);
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.file-drop-zone:active, .file-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(74,144,217,0.08);
+}
+.file-drop-zone .icon {
+  font-size: 2.4rem;
+}
+.file-drop-zone .label {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.file-drop-zone .hint {
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+.file-drop-zone input[type=file] {
+  display: none;
+}
+
+/* Selected images list */
+.image-list { display: none; }
+.image-list.visible { display: block; }
+
+.image-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+.image-thumb {
+  width: 64px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #111;
+}
+.image-info {
+  flex: 1;
+  min-width: 0;
+}
+.image-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.image-dims {
+  font-size: 0.7rem;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.image-order {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.image-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.image-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.image-remove:active {
+  transform: scale(0.9);
+}
+
+/* Width warning */
+.width-warning {
+  display: none;
+  padding: 10px 14px;
+  background: rgba(217,74,74,0.1);
+  border: 1px solid rgba(217,74,74,0.3);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+.width-warning.visible { display: block; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+.btn-primary:disabled:active {
+  transform: none;
+}
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--text);
+}
+.btn-small {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  width: auto;
+}
+
+/* Button row */
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+.btn-row .btn {
+  flex: 1;
+}
+
+/* Result section */
+.result-section { display: none; }
+.result-section.visible { display: block; }
+
+.result-preview-wrapper {
+  position: relative;
+  width: 100%;
+  max-height: 50vh;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  background: #111;
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.result-preview-wrapper img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.result-info {
+  font-size: 0.8rem;
+  color: var(--text2);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 0.85rem;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <a href="index.html" class="header-back" title="返回">←</a>
+    <div>
+      <h1>📐 图片拼接</h1>
+      <div class="sub">纵向拼接多张图片</div>
+    </div>
+  </div>
+
+  <!-- File Input -->
+  <div class="card">
+    <div class="card-title">📥 选择图片</div>
+    <div class="file-drop-zone" id="dropZone">
+      <span class="icon">🖼️</span>
+      <span class="label" id="dropLabel">点击选择图片</span>
+      <span class="hint" id="dropHint">支持 JPG / PNG / WebP，建议选择 3 张</span>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+    <div class="image-list" id="imageList"></div>
+    <div class="width-warning" id="widthWarning">⚠️ 图片宽度不一致，拼接后将以第一张图片宽度为准进行缩放</div>
+  </div>
+
+  <!-- Action -->
+  <div class="btn-row">
+    <button class="btn btn-outline" id="clearBtn" disabled>🗑️ 清空</button>
+    <button class="btn btn-primary" id="stitchBtn" disabled>🔗 开始拼接</button>
+  </div>
+
+  <!-- Result -->
+  <div class="card result-section" id="resultSection">
+    <div class="card-title">📎 拼接结果</div>
+    <div class="result-preview-wrapper" id="resultPreviewWrapper">
+      <img id="resultPreview" alt="拼接预览">
+    </div>
+    <div class="result-info" id="resultInfo"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="newStitchBtn">🔄 重新拼接</button>
+      <button class="btn btn-primary" id="downloadBtn">📥 下载图片</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  const $ = (s) => document.querySelector(s);
+
+  const dropZone = $('#dropZone');
+  const dropLabel = $('#dropLabel');
+  const dropHint = $('#dropHint');
+  const fileInput = $('#fileInput');
+  const imageList = $('#imageList');
+  const widthWarning = $('#widthWarning');
+  const clearBtn = $('#clearBtn');
+  const stitchBtn = $('#stitchBtn');
+  const resultSection = $('#resultSection');
+  const resultPreviewWrapper = $('#resultPreviewWrapper');
+  const resultPreview = $('#resultPreview');
+  const resultInfo = $('#resultInfo');
+  const downloadBtn = $('#downloadBtn');
+  const newStitchBtn = $('#newStitchBtn');
+  const toast = $('#toast');
+
+  let imageData = []; // { file, img, width, height, thumbUrl }
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  // ── File selection ──
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  dropZone.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      const files = Array.from(fileInput.files).filter(f =>
+        /\.(jpe?g|png|webp)$/i.test(f.name)
+      );
+      if (files.length === 0) {
+        showToast('未找到支持的图片文件');
+        return;
+      }
+      loadImages(files);
+    }
+  });
+
+  // ── Drag & Drop ──
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      /\.(jpe?g|png|webp)$/i.test(f.name)
+    );
+    if (files.length === 0) {
+      showToast('未找到支持的图片文件');
+      return;
+    }
+    loadImages(files);
+  });
+
+  // ── Load images ──
+  function loadImages(files) {
+    const promises = files.map(file => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const canvas = document.createElement('canvas');
+          const maxThumb = 200;
+          let tw = img.width, th = img.height;
+          if (tw > maxThumb) { th = Math.round(th * maxThumb / tw); tw = maxThumb; }
+          canvas.width = tw;
+          canvas.height = th;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, tw, th);
+          resolve({
+            file,
+            img,
+            width: img.width,
+            height: img.height,
+            thumbUrl: canvas.toDataURL('image/jpeg', 0.7)
+          });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error(`无法加载: ${file.name}`));
+        };
+        img.src = url;
+      });
+    });
+
+    Promise.all(promises).then(data => {
+      imageData = imageData.concat(data);
+      fileInput.value = '';
+      renderImageList();
+    }).catch(err => {
+      showToast(err.message);
+    });
+  }
+
+  // ── Remove single image ──
+  function removeImage(index) {
+    imageData.splice(index, 1);
+    renderImageList();
+  }
+
+  // ── Render image list ──
+  function renderImageList() {
+    imageList.innerHTML = '';
+
+    if (imageData.length === 0) {
+      imageList.classList.remove('visible');
+      widthWarning.classList.remove('visible');
+      clearBtn.disabled = true;
+      stitchBtn.disabled = true;
+      dropLabel.textContent = '点击选择图片';
+      dropHint.textContent = '支持 JPG / PNG / WebP，建议选择 3 张';
+      return;
+    }
+
+    imageList.classList.add('visible');
+    clearBtn.disabled = false;
+
+    const totalSize = imageData.reduce((s, d) => s + d.file.size, 0);
+    dropLabel.textContent = `已选 ${imageData.length} 张图片`;
+    dropHint.textContent = `总大小 ${formatSize(totalSize)}，点击继续添加`;
+
+    imageData.forEach((d, i) => {
+      const div = document.createElement('div');
+      div.className = 'image-item';
+      div.innerHTML = `
+        <span class="image-order">#${i + 1}</span>
+        <img class="image-thumb" src="${d.thumbUrl}" alt="">
+        <div class="image-info">
+          <div class="image-name" title="${d.file.name}">${d.file.name}</div>
+          <div class="image-dims">${d.width} × ${d.height} · ${formatSize(d.file.size)}</div>
+        </div>
+        <button class="image-remove" data-index="${i}" title="移除">✕</button>
+      `;
+      imageList.appendChild(div);
+    });
+
+    // Bind remove buttons
+    imageList.querySelectorAll('.image-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeImage(parseInt(btn.dataset.index));
+      });
+    });
+
+    // Check widths
+    if (imageData.length >= 2) {
+      const widths = imageData.map(d => d.width);
+      const allSame = widths.every(w => w === widths[0]);
+      if (allSame) {
+        widthWarning.classList.remove('visible');
+      } else {
+        widthWarning.classList.add('visible');
+      }
+    } else {
+      widthWarning.classList.remove('visible');
+    }
+
+    // Enable/disable stitch button
+    stitchBtn.disabled = imageData.length < 2;
+  }
+
+  // ── Clear all ──
+  clearBtn.addEventListener('click', () => {
+    imageData = [];
+    resultSection.classList.remove('visible');
+    renderImageList();
+    showToast('已清空');
+  });
+
+  // ── Stitch ──
+  stitchBtn.addEventListener('click', () => {
+    if (imageData.length < 2) return;
+
+    // Determine canvas size
+    const refWidth = imageData[0].width;
+    let totalHeight = 0;
+
+    // Scale each image to match reference width
+    const scaled = imageData.map(d => {
+      const scale = refWidth / d.width;
+      const h = Math.round(d.height * scale);
+      totalHeight += h;
+      return { img: d.img, width: refWidth, height: h, scale };
+    });
+
+    // Check canvas size limit
+    const MAX_DIM = 16384;
+    if (refWidth > MAX_DIM || totalHeight > MAX_DIM) {
+      showToast(`输出尺寸 ${refWidth}×${totalHeight} 超出限制（最大 ${MAX_DIM}px）`);
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = refWidth;
+    canvas.height = totalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, refWidth, totalHeight);
+
+    // Draw each image
+    let yOffset = 0;
+    scaled.forEach(s => {
+      ctx.drawImage(s.img, 0, yOffset, s.width, s.height);
+      yOffset += s.height;
+    });
+
+    // Show result
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    resultPreview.src = dataUrl;
+    resultPreviewWrapper.scrollTop = 0;
+    resultInfo.textContent = `${refWidth} × ${totalHeight} px · ${imageData.length} 张拼接`;
+    resultSection.classList.add('visible');
+    resultSection.scrollIntoView({ behavior: 'smooth' });
+
+    // Store for download
+    resultSection._canvas = canvas;
+
+    showToast(`拼接完成！${refWidth}×${totalHeight}`);
+  });
+
+  // ── Download ──
+  downloadBtn.addEventListener('click', () => {
+    const canvas = resultSection._canvas;
+    if (!canvas) return;
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('下载失败');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
+      a.download = `stitch_${ts}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('下载中...');
+    }, 'image/jpeg', 0.92);
+  });
+
+  // ── New stitch ──
+  newStitchBtn.addEventListener('click', () => {
+    imageData = [];
+    resultSection.classList.remove('visible');
+    renderImageList();
+  });
+
+  // ── Init ──
+  renderImageList();
+})();
+</script>
+
+</body>
+</html>

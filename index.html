@@ -61,6 +61,25 @@ body {
   color: var(--text2);
   margin-top: 4px;
 }
+.header-stitch-btn {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text2);
+  font-size: 0.8rem;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.header-stitch-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74,144,217,0.08);
+}
+.header-stitch-btn:active {
+  transform: scale(0.96);
+}
 
 /* Card */
 .card {
@@ -449,6 +468,7 @@ body {
   <div class="header">
     <h1>🎬 1.33x 反挤压</h1>
     <div class="sub">变形宽银幕镜头照片处理工具</div>
+    <a href="stitch.html" class="header-stitch-btn">📐 图片拼接</a>
   </div>
 
   <!-- Mode Selection -->
