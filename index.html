@@ -586,6 +586,13 @@ body {
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
+  // ── HTML escape (prevent XSS from filenames) ──
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
   // ── Mode switching ──
   modeTabs.addEventListener('click', (e) => {
     const tab = e.target.closest('.mode-tab');
@@ -749,20 +756,35 @@ body {
             reject(new Error('无法生成图片'));
             return;
           }
+
+          // Generate small thumbnail instead of full-size toDataURL
+          const thumbCanvas = document.createElement('canvas');
+          const thumbMax = 112;
+          let tw = outW, th = outH;
+          if (tw > thumbMax || th > thumbMax) {
+            const scale = Math.min(thumbMax / tw, thumbMax / th);
+            tw = Math.round(tw * scale);
+            th = Math.round(th * scale);
+          }
+          thumbCanvas.width = tw;
+          thumbCanvas.height = th;
+          thumbCanvas.getContext('2d').drawImage(canvas, 0, 0, tw, th);
+
           resolve({
             blob,
             width: outW,
             height: outH,
             originalName: file.name,
             outputName: getOutputFilename(file.name),
-            thumbUrl: canvas.toDataURL('image/jpeg', 0.5)
+            thumbUrl: thumbCanvas.toDataURL('image/jpeg', 0.7)
           });
         }, 'image/jpeg', qualitySlider.value / 100);
       };
 
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error('图片加载失败'));
+        const isHeic = /\.(heic|heif)$/i.test(file.name);
+        reject(new Error(isHeic ? '当前浏览器不支持 HEIC 格式，请使用 Safari 或先转换为 JPG' : '图片加载失败'));
       };
 
       img.src = url;
@@ -854,10 +876,11 @@ body {
       else if (r.status === 'skipped') { statusClass = 'skipped'; statusIcon = '⏭️'; }
       else { statusClass = 'error'; statusIcon = '❌'; }
 
+      const displayName = escapeHtml(r.outputName || r.name);
       div.innerHTML = `
         ${r.thumbUrl ? `<img class="result-thumb" src="${r.thumbUrl}" alt="">` : `<div class="result-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">${statusIcon}</div>`}
         <div class="result-info">
-          <div class="result-name" title="${r.outputName || r.name}">${r.outputName || r.name}</div>
+          <div class="result-name" title="${displayName}">${displayName}</div>
           <div class="result-size">${r.msg}</div>
           <div class="result-status ${statusClass}">${statusIcon} ${r.status === 'processed' ? '已处理' : r.status === 'skipped' ? '已跳过' : '失败'}</div>
         </div>
@@ -907,6 +930,8 @@ body {
 
   // ── Clear ──
   clearBtn.addEventListener('click', () => {
+    // Release thumbnail data URLs to help GC
+    resultsList.querySelectorAll('.result-thumb').forEach(img => { img.src = ''; });
     results = [];
     resultsList.innerHTML = '';
     resultsSection.classList.remove('visible');

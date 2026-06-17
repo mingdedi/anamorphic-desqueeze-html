@@ -341,7 +341,7 @@ body {
     <div class="file-drop-zone" id="dropZone">
       <span class="icon">🖼️</span>
       <span class="label" id="dropLabel">点击选择图片</span>
-      <span class="hint" id="dropHint">支持 JPG / PNG / WebP，建议选择 3 张</span>
+      <span class="hint" id="dropHint">支持 JPG / PNG / WebP / HEIC，建议选择 3 张</span>
       <input type="file" id="fileInput" accept="image/*" multiple>
     </div>
     <div class="image-list" id="imageList"></div>
@@ -401,6 +401,13 @@ body {
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
   }
 
+  // ── HTML escape (prevent XSS from filenames) ──
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -420,7 +427,7 @@ body {
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
       const files = Array.from(fileInput.files).filter(f =>
-        /\.(jpe?g|png|webp)$/i.test(f.name)
+        /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)
       );
       if (files.length === 0) {
         showToast('未找到支持的图片文件');
@@ -442,7 +449,7 @@ body {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer.files).filter(f =>
-      /\.(jpe?g|png|webp)$/i.test(f.name)
+      /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)
     );
     if (files.length === 0) {
       showToast('未找到支持的图片文件');
@@ -508,7 +515,7 @@ body {
       clearBtn.disabled = true;
       stitchBtn.disabled = true;
       dropLabel.textContent = '点击选择图片';
-      dropHint.textContent = '支持 JPG / PNG / WebP，建议选择 3 张';
+      dropHint.textContent = '支持 JPG / PNG / WebP / HEIC，建议选择 3 张';
       return;
     }
 
@@ -522,11 +529,12 @@ body {
     imageData.forEach((d, i) => {
       const div = document.createElement('div');
       div.className = 'image-item';
+      const displayName = escapeHtml(d.file.name);
       div.innerHTML = `
         <span class="image-order">#${i + 1}</span>
         <img class="image-thumb" src="${d.thumbUrl}" alt="">
         <div class="image-info">
-          <div class="image-name" title="${d.file.name}">${d.file.name}</div>
+          <div class="image-name" title="${displayName}">${displayName}</div>
           <div class="image-dims">${d.width} × ${d.height} · ${formatSize(d.file.size)}</div>
         </div>
         <button class="image-remove" data-index="${i}" title="移除">✕</button>
@@ -571,6 +579,8 @@ body {
   stitchBtn.addEventListener('click', () => {
     if (imageData.length < 2) return;
 
+    stitchBtn.disabled = true;
+
     // Determine canvas size
     const refWidth = imageData[0].width;
     let totalHeight = 0;
@@ -587,6 +597,7 @@ body {
     const MAX_DIM = 16384;
     if (refWidth > MAX_DIM || totalHeight > MAX_DIM) {
       showToast(`输出尺寸 ${refWidth}×${totalHeight} 超出限制（最大 ${MAX_DIM}px）`);
+      stitchBtn.disabled = false;
       return;
     }
 
@@ -608,45 +619,59 @@ body {
       yOffset += s.height;
     });
 
-    // Show result
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    resultPreview.src = dataUrl;
-    resultPreviewWrapper.scrollTop = 0;
-    resultInfo.textContent = `${refWidth} × ${totalHeight} px · ${imageData.length} 张拼接`;
-    resultSection.classList.add('visible');
-    resultSection.scrollIntoView({ behavior: 'smooth' });
+    // Generate blob for preview and download
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('拼接失败');
+        stitchBtn.disabled = false;
+        return;
+      }
 
-    // Store for download
-    resultSection._canvas = canvas;
+      // Revoke previous blob URL if any
+      if (resultSection._blobUrl) {
+        URL.revokeObjectURL(resultSection._blobUrl);
+      }
 
-    showToast(`拼接完成！${refWidth}×${totalHeight}`);
+      const url = URL.createObjectURL(blob);
+      resultPreview.src = url;
+      resultPreviewWrapper.scrollTop = 0;
+      resultInfo.textContent = `${refWidth} × ${totalHeight} px · ${imageData.length} 张拼接`;
+      resultSection.classList.add('visible');
+      resultSection.scrollIntoView({ behavior: 'smooth' });
+
+      // Store blob and URL for download
+      resultSection._blob = blob;
+      resultSection._blobUrl = url;
+
+      showToast(`拼接完成！${refWidth}×${totalHeight}`);
+      stitchBtn.disabled = false;
+    }, 'image/jpeg', 0.92);
   });
 
   // ── Download ──
   downloadBtn.addEventListener('click', () => {
-    const canvas = resultSection._canvas;
-    if (!canvas) return;
+    const blob = resultSection._blob;
+    if (!blob) return;
 
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        showToast('下载失败');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
-      a.download = `stitch_${ts}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      showToast('下载中...');
-    }, 'image/jpeg', 0.92);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
+    a.download = `stitch_${ts}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('下载中...');
   });
 
   // ── New stitch ──
   newStitchBtn.addEventListener('click', () => {
+    if (resultSection._blobUrl) {
+      URL.revokeObjectURL(resultSection._blobUrl);
+      resultSection._blobUrl = null;
+      resultSection._blob = null;
+    }
     imageData = [];
     resultSection.classList.remove('visible');
     renderImageList();
