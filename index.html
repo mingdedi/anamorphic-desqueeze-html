@@ -534,7 +534,8 @@ body {
   <div class="card results-section" id="resultsSection">
     <div class="card-title">✅ 处理结果</div>
     <div class="batch-actions" style="margin-bottom:12px">
-      <button class="btn btn-outline btn-small" id="downloadAllBtn">📥 下载全部</button>
+      <button class="btn btn-outline btn-small" id="downloadAllBtn">📥 逐个下载</button>
+      <button class="btn btn-outline btn-small" id="downloadZipBtn">📦 打包 ZIP</button>
       <button class="btn btn-danger btn-small" id="clearBtn">🗑️ 清除列表</button>
     </div>
     <div id="resultsList"></div>
@@ -573,6 +574,7 @@ body {
   const resultsSection = $('#resultsSection');
   const resultsList = $('#resultsList');
   const downloadAllBtn = $('#downloadAllBtn');
+  const downloadZipBtn = $('#downloadZipBtn');
   const clearBtn = $('#clearBtn');
   const toast = $('#toast');
   const fileClearBtn = $('#fileClearBtn');
@@ -926,6 +928,150 @@ body {
     processedResults.forEach((r, i) => {
       setTimeout(() => downloadResult(r), i * 300);
     });
+  });
+
+  // ── ZIP packaging (store mode, no compression) ──
+  // JPEG/PNG/WebP are already compressed; store mode keeps code minimal and fast.
+  // CRC-32 table
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  // DOS time/date for current moment
+  function dosDateTime(d) {
+    const time = ((d.getHours() & 0x1F) << 11) | ((d.getMinutes() & 0x3F) << 5) | ((d.getSeconds() / 2) & 0x1F);
+    const date = (((d.getFullYear() - 1980) & 0x7F) << 9) | (((d.getMonth() + 1) & 0x0F) << 5) | (d.getDate() & 0x1F);
+    return { time, date };
+  }
+  // Ensure filename uniqueness inside the ZIP
+  function uniqueName(name, used) {
+    if (!used.has(name)) { used.add(name); return name; }
+    const dot = name.lastIndexOf('.');
+    const base = dot === -1 ? name : name.substring(0, dot);
+    const ext = dot === -1 ? '' : name.substring(dot);
+    let i = 1;
+    while (used.has(`${base}_${i}${ext}`)) i++;
+    const out = `${base}_${i}${ext}`;
+    used.add(out);
+    return out;
+  }
+  async function buildZip(entries) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const { time, date } = dosDateTime(new Date());
+
+    for (const e of entries) {
+      const data = new Uint8Array(await e.blob.arrayBuffer());
+      const nameBytes = encoder.encode(e.name);
+      const crc = crc32(data);
+      const size = data.length;
+
+      // Local file header (30 bytes + name)
+      const local = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);   // signature
+      lv.setUint16(4, 20, true);            // version
+      lv.setUint16(6, 0x0800, true);        // flags: UTF-8 filename
+      lv.setUint16(8, 0, true);             // method: store
+      lv.setUint16(10, time, true);
+      lv.setUint16(12, date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);         // compressed
+      lv.setUint32(22, size, true);         // uncompressed
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);            // extra length
+      local.set(nameBytes, 30);
+
+      localParts.push(local, data);
+
+      // Central directory entry (46 bytes + name)
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);            // version made by
+      cv.setUint16(6, 20, true);            // version needed
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, time, true);
+      cv.setUint16(14, date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);            // extra
+      cv.setUint16(32, 0, true);            // comment
+      cv.setUint16(34, 0, true);            // disk
+      cv.setUint16(36, 0, true);            // internal attrs
+      cv.setUint32(38, 0, true);            // external attrs
+      cv.setUint32(42, offset, true);       // local header offset
+      central.set(nameBytes, 46);
+
+      centralParts.push(central);
+      offset += local.length + data.length;
+    }
+
+    const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+    const centralOffset = offset;
+
+    // End of central directory (22 bytes)
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, centralOffset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob([...localParts, ...centralParts, eocd], { type: 'application/zip' });
+  }
+
+  downloadZipBtn.addEventListener('click', async () => {
+    const processedResults = results.filter(r => r.status === 'processed');
+    if (processedResults.length === 0) {
+      showToast('没有可下载的文件');
+      return;
+    }
+    const originalText = downloadZipBtn.innerHTML;
+    downloadZipBtn.disabled = true;
+    downloadZipBtn.innerHTML = '<span class="spinner"></span> 打包中...';
+    try {
+      const usedNames = new Set();
+      const entries = processedResults.map(r => ({
+        name: uniqueName(r.outputName, usedNames),
+        blob: r.blob
+      }));
+      const zipBlob = await buildZip(entries);
+      const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `desqueezed_${ts}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`已打包 ${entries.length} 个文件 (${formatSize(zipBlob.size)})`);
+    } catch (err) {
+      showToast('打包失败: ' + err.message);
+    } finally {
+      downloadZipBtn.disabled = false;
+      downloadZipBtn.innerHTML = originalText;
+    }
   });
 
   // ── Clear ──
